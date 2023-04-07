@@ -1,0 +1,59 @@
+#
+name: Template-nest-react-postgres-prisma
+
+services:
+  client:
+    build: ./client
+    ports:
+      - 3000:3000
+    networks:
+      - netw
+    volumes:
+      - ./client:/usr/src/app
+      - /usr/src/app/node_modules
+
+  api:
+    build: ./api
+    ports:
+      - 5400:5400
+      - 9229:9229 # debug port
+    depends_on:
+      - postgres
+    networks:
+      - netw
+    volumes:
+      - ./api:/usr/src/app
+      - /usr/src/app/node_modules
+
+  postgres:
+    image: postgres:latest
+    restart: always
+    ports:
+      - 5432:5432
+    env_file:
+      - database/postgres.env
+    networks:
+      - netw
+    volumes:
+      - postgres:/var/lib/postgresql/data/
+
+  ### Postgres admin ###
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    env_file:
+      - database/pgadmin.env
+    ports:
+      - 15432:80
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - netw
+
+volumes:
+  postgres:
+  pgadmin:
+
+networks:
+  netw: {}
