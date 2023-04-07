@@ -27,7 +27,6 @@ init-prisma:
 deinit-prisma:
 	cd src/api && npm uninstall prisma @prisma/client
 
-
 # ===============================================
 
 create_dir:
