@@ -1,7 +1,11 @@
 NAME		=	webapp-template
 
-VOLUME_PATH	=	./src/.volumes
+VOLUME_PATH	=
 COMPOSE 	=	docker compose -f ./src/Docker-compose.yml
+
+API			=	$(NAME)-api
+CLIENT		=	$(NAME)-client
+POSTGRES	=	$(NAME)-postgres
 
 # Recipe
 ################################
@@ -23,9 +27,6 @@ show:
 
 prisma: _prisma
 
-studio:
-	cd src/api && npx prisma studio
-
 log: _log
 
 create_dir:
@@ -42,19 +43,26 @@ help: _help
 # turn them into do-nothing targets
 $(eval client:;@:)
 $(eval api:;@:)
-$(eval postgres:;@:)
+$(eval db:;@:)
+
+$(eval install:;@:)
+$(eval delete:;@:)
+$(eval generate:;@:)
+$(eval migrate:;@:)
+$(eval deploy:;@:)
 
 .PHONY: _prisma
 _prisma:
-ifeq (init, $(filter init,$(MAKECMDGOALS)))
+ifeq (install, $(filter install,$(MAKECMDGOALS)))
 	cd src/api && npm i prisma @prisma/client && npx prisma init
 else ifeq (delete, $(filter delete,$(MAKECMDGOALS)))
 	cd src/api && npm uninstall prisma @prisma/client
 else ifeq (generate, $(filter generate,$(MAKECMDGOALS)))
-	cd src/api && npx prisma generate
-	docker exec api npx prisma generate
+	docker exec $(API) npx prisma generate
 else ifeq (migrate, $(filter migrate,$(MAKECMDGOALS)))
-	cd src/api && npx prisma migrate dev
+	docker exec $(API) npx prisma migrate dev
+else ifeq (deploy, $(filter deploy,$(MAKECMDGOALS)))
+	docker exec $(API) npx prisma migrate deploy
 endif
 
 BUILD	=	$(COMPOSE) build --no-cache
@@ -62,13 +70,13 @@ BUILD	=	$(COMPOSE) build --no-cache
 _build:
 ifeq (client, $(filter client,$(MAKECMDGOALS)))
 	@echo 'building client'
-	$(BUILD) client
+	$(BUILD) $(CLIENT)
 else ifeq (api, $(filter api,$(MAKECMDGOALS)))
 	@echo 'building api'
-	$(BUILD) api
-else ifeq (postgres, $(filter postgres,$(MAKECMDGOALS)))
+	$(BUILD) $(API)
+else ifeq (db, $(filter db,$(MAKECMDGOALS)))
 	@echo 'building postgres'
-	$(BUILD) postgres
+	$(BUILD) $(POSTGRES)
 else
 	@echo 'building all'
 	$(BUILD)
@@ -79,13 +87,13 @@ START	=	$(COMPOSE) up -d
 _start:
 ifeq (client, $(filter client,$(MAKECMDGOALS)))
 	@echo 'starting client'
-	$(START) client
+	$(START) $(CLIENT)
 else ifeq (api, $(filter api,$(MAKECMDGOALS)))
 	@echo 'starting api'
-	$(START) api
-else ifeq (postgres, $(filter postgres,$(MAKECMDGOALS)))
+	$(START) $(API)
+else ifeq (db, $(filter db,$(MAKECMDGOALS)))
 	@echo 'starting postgres'
-	$(START) postgres pgadmin
+	$(START) $(POSTGRES) pgadmin
 else
 	@echo 'starting all'
 	$(START)
@@ -96,13 +104,13 @@ STOP	=	$(COMPOSE) stop
 _stop:
 ifeq (client, $(filter client,$(MAKECMDGOALS)))
 	@echo 'stop client'
-	$(STOP) client
+	$(STOP) $(CLIENT)
 else ifeq (api, $(filter api,$(MAKECMDGOALS)))
 	@echo 'stop api'
-	$(STOP) api
-else ifeq (postgres, $(filter postgres,$(MAKECMDGOALS)))
+	$(STOP) $(API)
+else ifeq (db, $(filter db,$(MAKECMDGOALS)))
 	@echo 'stop postgres'
-	$(STOP) postgres
+	$(STOP) $(POSTGRES)
 else
 	@echo 'stop all'
 	$(STOP)
@@ -114,13 +122,13 @@ CLEAN	=	docker rmi -f
 _clean:
 ifeq (client, $(filter client,$(MAKECMDGOALS)))
 	@echo 'removing client image'
-	$(CLEAN) $(NAME)-client
+	$(CLEAN) $(CLIENT)
 else ifeq (api, $(filter api,$(MAKECMDGOALS)))
 	@echo 'removing api image'
-	$(CLEAN) $(NAME)-api
-else ifeq (postgres, $(filter postgres,$(MAKECMDGOALS)))
+	$(CLEAN) $(API)
+else ifeq (db, $(filter db,$(MAKECMDGOALS)))
 	@echo 'removing postgres image'
-	$(CLEAN) postgres
+	$(CLEAN) $(POSTGRES)
 else
 	@echo 'removing all images'
 	$(CLEAN) $(NAME)-client $(NAME)-api postgres
@@ -132,8 +140,10 @@ ifeq (client, $(filter client,$(MAKECMDGOALS)))
 	@echo 'Restarting client'
 else ifeq (api, $(filter api,$(MAKECMDGOALS)))
 	@echo 'Restarting api'
-else ifeq (postgres, $(filter postgres,$(MAKECMDGOALS)))
+else ifeq (db, $(filter db,$(MAKECMDGOALS)))
 	@echo 'Restarting postgres'
+	sleep 1
+	$(MAKE) prisma deploy
 else
 	@echo 'Restarting all'
 endif
@@ -143,13 +153,13 @@ LOG	=	docker logs -f
 _log:
 ifeq (client, $(filter client,$(MAKECMDGOALS)))
 	@echo 'Logging client'
-	$(LOG) client
+	$(LOG) $(CLIENT)
 else ifeq (api, $(filter api,$(MAKECMDGOALS)))
 	@echo 'Logging api'
-	$(LOG) api
-else ifeq (postgres, $(filter postgres,$(MAKECMDGOALS)))
+	$(LOG) $(API)
+else ifeq (db, $(filter db,$(MAKECMDGOALS)))
 	@echo 'Logging postgres'
-	$(LOG) postgres
+	$(LOG) $(POSTGRES)
 endif
 
 .PHONY: _help

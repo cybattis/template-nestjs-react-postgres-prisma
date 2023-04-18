@@ -7,8 +7,9 @@ RUN npm install -g @nestjs/cli
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN npm install && npx prisma generate
+RUN npm install
 
 COPY . .
 
+ENTRYPOINT ["script/entrypoint.sh"]
 CMD ["npm", "run", "start:dev"]
